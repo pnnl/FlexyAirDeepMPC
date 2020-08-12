@@ -1,6 +1,6 @@
 # NeuroMANCER
 ## Neural Modules with Adaptive Nonlinear Constraints and 	Efficient Regularizations
-![UML diagram](figs/class_diagram.png)
+![UML diagram](neuromancer/figs/class_diagram.png)
 
 ## Setup
 
@@ -47,27 +47,29 @@ user@machine:~$ source activate neuromancer
 (neuromancer) user@machine:~$ python setup.py develop
 ```
 
-### TODO
-    [ ] Mini-batching
-    [ ] Visualizer for Multi-parametric programs
-    [ ] Learn-rate scheduling
-    [ ] Early stopping
-    [ ] Multiple experiment time-series data
-    [ ] Visualize learnable loss function evolution
-    [ ] Generalize sliding window between 1 and nsteps
-    [ ] Re-implement RNN state preservation for open loop simulation
-    [ ] full trajectory estimators: This will entail only taking the first N-steps for all the non-static inputs
-    [ ] Pytorch Extended Kalman Filter: 
-            https://filterpy.readthedocs.io/en/latest/_modules/filterpy/kalman/EKF.html
-    [ ] Implement LQR policy, similar structure to Linear Kalman Filter: 
-            Scipy reference https://nbviewer.jupyter.org/url/argmin.net/code/little_LQR_demo.ipynb
-    [ ] WandB logger
-    [ ] stream plots for phase spaces of ODEs
-    [ ] generate correlation network - https://python-graph-gallery.com/327-network-from-correlation-matrix/
-    [ ] plot information-theoretic measures for time series data - 
-            https: // elife - asu.github.io / PyInform / timeseries.html
-    [ ] Doc strings
-    [ ] Sphinx docs
-    [ ] Package distribution via conda or pypi
-    [ ] Look at this testing software to for automatic wider test coverage: 
-            https://hypothesis.readthedocs.io/en/latest/
+### Run System ID and Control Scripts
+
+
+##### System ID
+
+files:
+```console
+flexy dataset path: [system_id.py](https://github.com/pnnl/FlexyAirDeepMPC/tree/master/neuromancer/neuromancer/datasets/Flexy_air)
+to train system ID on flexy dataset run: [system_id.py](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/system_id.py)
+```
+
+good choice of hyperparameters for system ID:
+```console
+python system_id.py -system flexy_air -epochs 1000 -nx_hidden 20 -ssm_type blackbox -state_estimator mlp -nonlinear_map residual_mlp -n_layers 2 -nsim 10000 -nsteps 32 -lr 0.001
+```
+
+##### Control 
+
+files:
+```console
+to train control policy for flexy dataset run: [control_flexy.py](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/control_flexy.py)
+```
+good choice of hyperparameters for control:
+```console
+python control_flexy -system flexy_air -epochs 1000 -nx_hidden 10 -ssm_type blackbox -n_layers 4 -nsim 10000 -nsteps 32 -lr 0.001 -policy_features ['x0_estim', 'Rf', 'Df']
+```
