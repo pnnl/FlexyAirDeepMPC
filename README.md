@@ -52,11 +52,9 @@ user@machine:~$ source activate neuromancer
 
 ##### System ID
 
-files:
-```console
 flexy dataset path: [system_id.py](https://github.com/pnnl/FlexyAirDeepMPC/tree/master/neuromancer/neuromancer/datasets/Flexy_air)
 to train system ID on flexy dataset run: [system_id.py](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/system_id.py)
-```
+
 
 good choice of hyperparameters for system ID:
 ```console
@@ -65,10 +63,8 @@ python system_id.py -system flexy_air -epochs 1000 -nx_hidden 20 -ssm_type black
 
 ##### Control 
 
-files:
-```console
 to train control policy for flexy dataset run: [control_flexy.py](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/control_flexy.py)
-```
+
 good choice of hyperparameters for control:
 ```console
 python control_flexy -system flexy_air -epochs 1000 -nx_hidden 10 -ssm_type blackbox -n_layers 4 -nsim 10000 -nsteps 32 -lr 0.001 -policy_features ['x0_estim', 'Rf', 'Df']
