@@ -20,13 +20,17 @@ from neuromancer.datasets import Dataset, DataDict
 
 
 class Simulator:
-    def __init__(self, model: Problem, dataset: Dataset, emulator: EmulatorBase = None):
+    def __init__(self, model: Problem, dataset: Dataset, emulator: EmulatorBase = None, eval_sim=True):
         self.model = model
         self.dataset = dataset
         self.emulator = emulator
+        self.eval_sim = eval_sim
 
     def dev_eval(self):
-        dev_loop_output = self.model(self.dataset.dev_loop)
+        if self.eval_sim:
+            dev_loop_output = self.model(self.dataset.dev_loop)
+        else:
+            dev_loop_output = dict()
         return dev_loop_output
 
     def test_eval(self):
@@ -41,8 +45,9 @@ class Simulator:
 
 
 class OpenLoopSimulator(Simulator):
-    def __init__(self, model: Problem, dataset: Dataset, emulator: [EmulatorBase, nn.Module] = None):
-        super().__init__(model=model, dataset=dataset, emulator=emulator)
+    def __init__(self, model: Problem, dataset: Dataset, emulator: [EmulatorBase, nn.Module] = None,
+                 eval_sim=True):
+        super().__init__(model=model, dataset=dataset, emulator=emulator, eval_sim=eval_sim)
 
     def simulate(self, data):
         return self.model(data)
@@ -128,11 +133,11 @@ class ClosedLoopSimulator(Simulator):
                     x, y, _, _ = self.emulator.simulate(ninit=0, nsim=1, U=u, D=d, x0=x.flatten())
                 elif isinstance(self.emulator, nn.Module):
                     step_data_0 = dict()
-                    step_data_0['U_pred_policy'] = uopt.reshape(uopt.shape[0], uopt.shape[1], 1)
-                    step_data_0['x0_estim'] = x
+                    step_data_0['U_pred_policy'] = uopt.reshape(uopt.shape[0], uopt.shape[1], 1).float()
+                    step_data_0['x0_estim'] = x.float()
                     for k, v in step_data.items():
                         dat = v[0]
-                        step_data_0[k] = dat.reshape(dat.shape[0], dat.shape[1], 1)
+                        step_data_0[k] = dat.reshape(dat.shape[0], dat.shape[1], 1).float()
                     emulator_output = self.emulator(step_data_0)
                     x = emulator_output['X_pred_dynamics'][0]
                     y = emulator_output['Y_pred_dynamics'][0].detach().numpy()
@@ -147,10 +152,10 @@ class ClosedLoopSimulator(Simulator):
                                                              Mmax=self.dataset.min_max_norms['Ymax'])
                     else:
                         Yp_np = np.concatenate(Y[-self.nsteps:])
-                    step_data['Yp'] = torch.tensor(np.concatenate(Yp_np, 0)).reshape(self.nsteps, 1, -1)
+                    step_data['Yp'] = torch.tensor(np.concatenate(Yp_np, 0)).reshape(self.nsteps, 1, -1).float()
 
                 if len(U_opt) > self.nsteps:
-                    step_data['Up'] = torch.cat(U_opt[-self.nsteps:], dim=0).reshape(self.nsteps, 1, -1)
+                    step_data['Up'] = torch.cat(U_opt[-self.nsteps:], dim=0).reshape(self.nsteps, 1, -1).float()
 
             # control policy model
             step_output = self.model(step_data)

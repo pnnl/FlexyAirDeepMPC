@@ -142,8 +142,7 @@ def dataset_load(args, device):
                               name='closedloop')
     nsim, ny = dataset.data['Y'].shape
     nu = dataset.data['U'].shape[1]
-    new_sequences = {':wq'
-                     '': 0.8 * np.ones([nsim, ny]), 'Y_min': 0.2 * np.ones([nsim, ny]),
+    new_sequences = {'Y_max': 0.8 * np.ones([nsim, ny]), 'Y_min': 0.2 * np.ones([nsim, ny]),
                      'U_max': np.ones([nsim, nu]), 'U_min': np.zeros([nsim, nu]),
                      'R': psl.Periodic(nx=1, nsim=nsim, numPeriods=12, xmax=1, xmin=0),
                      'Y_ctrl_p': psl.WhiteNoise(nx=ny, nsim=nsim, xmax=[1.0]*ny, xmin=[0.0]*ny)}
