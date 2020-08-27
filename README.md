@@ -54,7 +54,7 @@ user@machine:~$ source activate neuromancer
 
 flexy dataset path: [Flexy_air](https://github.com/pnnl/FlexyAirDeepMPC/tree/master/neuromancer/neuromancer/datasets/Flexy_air)
 
-to train system ID on flexy dataset run: system_id_flexy(https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/system_id_flexy.py)
+to train system ID on flexy dataset run: [system_id_flexy](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/system_id_flexy.py)
 
 good choice of hyperparameters for system ID:
 ```console
