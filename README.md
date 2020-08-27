@@ -52,9 +52,9 @@ user@machine:~$ source activate neuromancer
 
 ##### System ID
 
-flexy dataset path: [system_id.py](https://github.com/pnnl/FlexyAirDeepMPC/tree/master/neuromancer/neuromancer/datasets/Flexy_air)
+flexy dataset path: [Flexy_air](https://github.com/pnnl/FlexyAirDeepMPC/tree/master/neuromancer/neuromancer/datasets/Flexy_air)
 
-to train system ID on flexy dataset run: [system_id.py](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/system_id.py)
+to train system ID on flexy dataset run: system_id_flexy(https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/system_id_flexy.py)
 
 good choice of hyperparameters for system ID:
 ```console
@@ -63,13 +63,13 @@ python system_id.py -system flexy_air -epochs 1000 -nx_hidden 20 -ssm_type black
 
 ##### Control 
 
-to train control policy for flexy dataset run: [control_flexy.py](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/control_flexy.py)
+to train control policy with learned state space model for flexy dataset run: [base_control_flexy.py](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/base_control_flexy.py)
 
 good choice of hyperparameters for control:
 ```console
-python control_flexy -system flexy_air -epochs 1000 -nx_hidden 10 -ssm_type blackbox -n_layers 4 -nsim 10000 -nsteps 32 -lr 0.001 -policy_features ['x0_estim', 'Rf', 'Df']
+python control_flexy -system flexy_air -epochs 1000 -nx_hidden 20 -ssm_type blackbox -n_layers 4 -nsim 10000 -nsteps 10 -lr 0.001 -policy_features ['x0_estim', 'Rf', 'Df']
 ```
 
+stored trained pytorch models for system ID and control: [test_control](https://github.com/pnnl/FlexyAirDeepMPC/tree/master/neuromancer/neuromancer/datasets/Flexy_air)
 
-stored trained pytorch models: [test_control](https://github.com/pnnl/FlexyAirDeepMPC/tree/master/neuromancer/neuromancer/train_scripts)
-
+test policy in an exposed closed loop for HW implementation [(https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/test_policy_flexy.py)](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/test_policy_flexy.py)
