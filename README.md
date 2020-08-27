@@ -70,6 +70,6 @@ good choice of hyperparameters for control:
 python control_flexy -system flexy_air -epochs 1000 -nx_hidden 20 -ssm_type blackbox -n_layers 4 -nsim 10000 -nsteps 10 -lr 0.001 -policy_features ['x0_estim', 'Rf', 'Df']
 ```
 
-stored trained pytorch models for system ID and control: [test_control](https://github.com/pnnl/FlexyAirDeepMPC/tree/master/neuromancer/neuromancer/datasets/Flexy_air)
+stored trained pytorch models for system ID and control: [Flexy_air](https://github.com/pnnl/FlexyAirDeepMPC/tree/master/neuromancer/neuromancer/datasets/Flexy_air)
 
 test policy in an exposed closed loop for HW implementation [test_policy_flexy.py](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/test_policy_flexy.py)
