@@ -97,6 +97,16 @@ class Linear(LinearBase):
         return self.linear(x)
 
 
+class IdentityInitLinear(Linear):
+
+    def __init__(self, insize, outsize, bias=False, **kwargs):
+        super().__init__(insize, outsize, bias=bias)
+        self.linear = nn.Linear(insize, outsize, bias=bias)
+        torch.nn.init.eye_(self.weight)
+        if bias:
+            torch.nn.init.zeros_(self.bias)
+
+
 class NonNegativeLinear(LinearBase):
     def __init__(self, insize, outsize, bias=False, **kwargs):
         super().__init__(insize, outsize, bias=bias)
@@ -107,7 +117,9 @@ class NonNegativeLinear(LinearBase):
 
 
 class PSDLinear(SquareLinear):
-
+    """
+    Symmetric Positive semi-definite matrix.
+    """
     def __init__(self, insize, outsize, bias=False, **kwargs):
         super().__init__(insize, outsize, bias=bias)
 
@@ -368,6 +380,24 @@ class SVDLinear(LinearBase):
         Sigma_bounded = torch.eye(self.in_features, self.out_features).to(self.sigma.device) * sigma_clapmed
         w_svd = torch.mm(self.U, torch.mm(Sigma_bounded, self.V))
         return w_svd
+
+
+class SVDLinearLearnBounds(SVDLinear):
+    def __init__(self, insize, outsize, bias=False, sigma_min=0.1, sigma_max=1, **kwargs):
+        """
+
+        soft SVD based regularization of matrix A
+        A = U*Sigma*V
+        U,V = unitary matrices (orthogonal for real matrices A)
+        Sigma = diagonal matrix of singular values (square roots of eigenvalues)
+        nu = number of columns
+        nx = number of rows
+        sigma_min = minum allowed value of  eigenvalues
+        sigma_max = maximum allowed value of eigenvalues
+        """
+        super().__init__(insize, outsize, bias=bias, sigma_min=sigma_min, sigma_max=sigma_max)
+        self.sigma_min = nn.Parameter(self.sigma_min)
+        self.sigma_max = nn.Parameter(self.sigma_max)
 
 
 def Hprod(x, u, k):
