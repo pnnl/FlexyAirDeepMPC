@@ -126,6 +126,7 @@ def Periodic(nx=1, nsim=100, numPeriods=1, xmax=1, xmin=0, form='sin'):
     :param xmin: (int/list/ndarray) signal minimum value
     :param form: (str) form of the periodic signal 'sin' or 'cos'
     """
+    assert nsim >= numPeriods, 'numPeriods must be smaller than nsim'
     if type(xmax) is not np.ndarray:
         xmax = np.asarray([xmax]*nx).ravel()
     if type(xmin) is not np.ndarray:
@@ -137,24 +138,28 @@ def Periodic(nx=1, nsim=100, numPeriods=1, xmax=1, xmin=0, form='sin'):
     samples_period = nsim// numPeriods
     leftover = nsim % numPeriods
     Signal = []
+    extraPeriods = 0
+    if leftover > samples_period:
+        extraPeriods = leftover//samples_period
+        leftover = leftover % samples_period
     for k in range(nx):
         if form == 'sin':
             base = xmin[k] + (xmax[k] - xmin[k])*(0.5 + 0.5 * np.sin(np.arange(0, 2 * np.pi, 2 * np.pi / samples_period)))
         elif form == 'cos':
             base = xmin[k] + (xmax[k] - xmin[k])*(0.5 + 0.5 * np.cos(np.arange(0, 2 * np.pi, 2 * np.pi / samples_period)))
-        signal = np.tile(base, numPeriods)
+        signal = np.tile(base, numPeriods+extraPeriods)
         signal = np.append(signal, base[0:leftover])
         Signal.append(signal)
     return np.asarray(Signal).T
 
   
-def SplineSignal(nsim=10, values=None, xmin=0, xmax=1):
+def SplineSignal(nsim=500, values=None, xmin=0, xmax=1):
     """
     Generates a smooth cubic spline trajectory by interpolating
     between data points
     """
     if values is None:
-        values = [rd.triangular(xmin, xmax) for _ in range(25)]
+        values = [rd.triangular(xmin, xmax) for _ in range(50)]
     dt = int(np.ceil(nsim / len(values)))
     dt_time = np.arange(0, nsim, dt)
     cs = interpolate.CubicSpline(dt_time, values)

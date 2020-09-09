@@ -122,6 +122,7 @@ class Tank(ODE_NonAutonomous):
         self.x0 = 0
         # initial valve position
         self.u0 = 10
+        self.nx = 1
 
     def equations(self, x, t, pump, valve):
         # States (1): level in the tanks
@@ -281,9 +282,6 @@ class UAV3D_kin(ODE_NonAutonomous):
     Dubins 3D model -- UAV kinematic model with no wind
     """
 
-    def __init__(self):
-        super().__init__()
-
     # parameters of the dynamical system
     def parameters(self):
         self.nx = 6    # Number of states
@@ -292,35 +290,38 @@ class UAV3D_kin(ODE_NonAutonomous):
         self.vmin = 9.5   # Minimum airspeed for stable flight (m/s)
 
         # Initial Conditions for the States
-        self.x0 = np.array([5, 10, 15, 0, np.pi/18, 9])
+        self.x0 = np.array([5, 10, 15, 0])
 
         # default simulation setup
-        self.V = SplineSignal(nsim=self.nsim, values=[9.5, 11, 15, 14, 14, 12, 10, 9.5, 10, 10, 10, 10])
-        self.phi = SplineSignal(nsim=self.nsim, values=[0.0, 0.0, -0.01, 0.01, 0.0, 0.01, 0.01, 0.0])
-        self.gamma = SplineSignal(nsim=self.nsim, values=[0, 0.01, 0.01, 0.01, 0.01, -0.01, 0.01])
+        # self.V = SplineSignal(nsim=self.nsim, values=[9.5, 15, 15, 12, 18, 10, 16, 9.5, 17, 9.5, 18, 10])
+        # self.phi = SplineSignal(nsim=self.nsim, values=[0.0, 0.01, -0.01, 0.02, -0.1, 0.1, 0.01, 0.0])
+        # self.gamma = SplineSignal(nsim=self.nsim, values=[0, 0.01, 0.01, 0.01, 0.01, -0.01, 0.01])
 
-        self.U = zip(self.V, self.phi, self.gamma)
+        self.V = SplineSignal(nsim=self.nsim, values=None, xmin=9.5, xmax=18)
+        self.phi = SplineSignal(nsim=self.nsim, values=None, xmin=-45*np.pi/180, xmax=45*np.pi/180)
+        self.gamma = SplineSignal(nsim=self.nsim, values=None, xmin=-10*np.pi/180, xmax=10*np.pi/180)
+
+        self.U = np.vstack([self.V, self.phi, self.gamma]).T
 
     # equations defining the dynamical system
-    def equations(self, x, t, U):
+    def equations(self, x, t, u):
         """
         # States (4): [x, y, z, psi]
         # Inputs (3): [V, phi, gamma]
         """
 
         # Inputs
-        V = U[0]
-        phi = U[1]
-        gamma = U[2]
+        V = u[0]
+        phi = u[1]
+        gamma = u[2]
 
-        dx_dt = np.zeros(6)
+        dx_dt = np.zeros(4)
         dx_dt[0] = V * np.cos(x[3]) * np.cos(gamma)
         dx_dt[1] = V * np.sin(x[3]) * np.cos(gamma)
         dx_dt[2] = V * np.sin(gamma)
         dx_dt[3] = (self.g/V) * (np.tan(phi))
 
         return dx_dt
-
 
       
 class UAV3D_dyn(ODE_NonAutonomous):
@@ -407,7 +408,7 @@ class HindmarshRose(ODE_NonAutonomous):
         self.umax = 10
         self.x0 = np.asarray([-5,-10,0])
         # default simulation setup
-        self.U = 3 * np.asarray([np.ones((self.nsim - 1))]).T
+        self.U = 3 * np.asarray([np.ones((self.nsim))]).T
         self.nu = 1
         self.nx = 3
 

@@ -338,7 +338,14 @@ class StableSplitLinear(LinearBase):
 
 
 class SVDLinear(LinearBase):
-    def __init__(self, insize, outsize, bias=False, sigma_min=0.1, sigma_max=1, **kwargs):
+    """
+    This paper uses the same factorization and orthogonality constraint but enforces a low rank prior on the map
+    by introducing a sparse prior on the singular values:
+    https://openaccess.thecvf.com/content_CVPRW_2020/papers/w40/Yang_Learning_Low-Rank_Deep_Neural_Networks_via_Singular_Vector_Orthogonality_Regularization_CVPRW_2020_paper.pdf
+    Also a similar regularization on the factors:
+    https://pdfs.semanticscholar.org/78b2/9eba4d6c836483c0aa67d637205e95223ae4.pdf
+    """
+    def __init__(self, insize, outsize, bias=False, sigma_min=0.1, sigma_max=1.0, **kwargs):
         """
 
         soft SVD based regularization of matrix A
@@ -383,7 +390,7 @@ class SVDLinear(LinearBase):
 
 
 class SVDLinearLearnBounds(SVDLinear):
-    def __init__(self, insize, outsize, bias=False, sigma_min=0.1, sigma_max=1, **kwargs):
+    def __init__(self, insize, outsize, bias=False, sigma_min=0.1, sigma_max=1.0, **kwargs):
         """
 
         soft SVD based regularization of matrix A
@@ -396,8 +403,8 @@ class SVDLinearLearnBounds(SVDLinear):
         sigma_max = maximum allowed value of eigenvalues
         """
         super().__init__(insize, outsize, bias=bias, sigma_min=sigma_min, sigma_max=sigma_max)
-        self.sigma_min = nn.Parameter(self.sigma_min)
-        self.sigma_max = nn.Parameter(self.sigma_max)
+        self.sigma_min = nn.Parameter(torch.tensor(sigma_min))
+        self.sigma_max = nn.Parameter(torch.tensor(sigma_max))
 
 
 def Hprod(x, u, k):
@@ -434,6 +441,33 @@ class OrthogonalLinear(SquareLinear):
         for i in range(0, self.in_features):
             x = Hprod(x, self.U[i], self.in_features - i)
         return x + self.bias
+
+
+class SchurDecompositionLinear(SquareLinear):
+    """
+    https://papers.nips.cc/paper/9513-non-normal-recurrent-neural-network-nnrnn-learning-long-time-dependencies-while-improving-expressivity-with-transient-dynamics.pdf
+    """
+    def __init__(self, insize, outsize, bias=False, l2=1e-2, **kwargs):
+        super().__init__(insize, outsize, bias=bias)
+        assert insize % 2 == 0, 'Insize must be divisible by 2.'
+        self.P = OrthogonalLinear(insize, insize)
+        self.theta = nn.Parameter(2*math.pi*torch.rand([insize//2]))
+        self.gamma = nn.Parameter(torch.ones([insize//2]))
+        self.T = self.build_T(torch.zeros(insize, insize))
+        self.l2 = l2
+
+    def build_T(self, T):
+        for k, (theta, gamma) in enumerate(zip(self.theta, self.gamma)):
+            rk = gamma * torch.tensor([[torch.cos(theta), -torch.sin(theta)],
+                                       [torch.sin(theta), torch.cos(theta)]])
+            T[2*k:2*k+2, 2*k:2*k+2] = rk
+        return T
+
+    def reg_error(self):
+        return self.l2*F.mse_loss(torch.ones(self.insize/2), self.gamma)
+
+    def effective_W(self):
+        return self.P(self.T) @ self.P.effective_W().T
 
 
 class SpectralLinear(LinearBase):
@@ -531,7 +565,7 @@ class SymplecticLinear(SquareLinear):
 
 
 square_maps = {SymmetricLinear, SkewSymmetricLinear, DampedSkewSymmetricLinear, PSDLinear,
-               OrthogonalLinear, SymplecticLinear}
+               OrthogonalLinear, SymplecticLinear, SchurDecompositionLinear}
 
 maps = {'linear': Linear,
         'nneg': NonNegativeLinear,
@@ -546,16 +580,23 @@ maps = {'linear': Linear,
         'stable_split': StableSplitLinear,
         'spectral': SpectralLinear,
         'softSVD': SVDLinear,
+        'learnSVD': SVDLinearLearnBounds,
         'orthogonal': OrthogonalLinear,
         'psd': PSDLinear,
         'symplectic': SymplecticLinear,
-        'butterfly': ButterflyLinear}
+        'butterfly': ButterflyLinear,
+        'schur': SchurDecompositionLinear}
 
 
 if __name__ == '__main__':
+    import sys
+    import inspect
     """
     Tests
     """
+    print(inspect.getmembers(sys.modules[__name__],
+                       lambda member: inspect.isclass(member) and member.__module__ == __name__))
+
     square = torch.rand(8, 8)
     long = torch.rand(3, 8)
     tall = torch.rand(8, 3)

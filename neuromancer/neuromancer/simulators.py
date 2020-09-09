@@ -40,7 +40,7 @@ class Simulator:
             all_output = {**all_output, **self.simulate(data)}
         return all_output
 
-    def simulate(self):
+    def simulate(self, data):
         pass
 
 
@@ -51,6 +51,43 @@ class OpenLoopSimulator(Simulator):
 
     def simulate(self, data):
         return self.model(data)
+
+
+class MultiSequenceOpenLoopSimulator(Simulator):
+    def __init__(self, model: Problem, dataset: Dataset, emulator: [EmulatorBase, nn.Module] = None,
+                 eval_sim=True, stack=False):
+        super().__init__(model=model, dataset=dataset, emulator=emulator, eval_sim=eval_sim)
+        self.stack = stack
+
+    def agg(self, outputs):
+        agg_outputs = dict()
+        for k, v in outputs[0].items():
+            agg_outputs[k] = []
+        for data in outputs:
+            for k in data:
+                agg_outputs[k].append(data[k])
+        for k in agg_outputs:
+            if len(agg_outputs[k][0].shape) < 2:
+                agg_outputs[k] = torch.mean(torch.stack(agg_outputs[k]))
+            else:
+                if self.stack:
+                    agg_outputs[k] = torch.stack(agg_outputs[k])
+                else:
+                    agg_outputs[k] = torch.cat(agg_outputs[k])
+        return agg_outputs
+
+    def simulate(self, data):
+        outputs = []
+        for d in data:
+            outputs.append(self.model(d))
+        return self.agg(outputs)
+
+    def dev_eval(self):
+        if self.eval_sim:
+            dev_loop_output = self.simulate(self.dataset.dev_loop)
+        else:
+            dev_loop_output = dict()
+        return dev_loop_output
 
 
 class ClosedLoopSimulator(Simulator):
@@ -65,6 +102,7 @@ class ClosedLoopSimulator(Simulator):
             self.x0 = self.emulator.x0
         elif isinstance(emulator, nn.Module):
             self.x0 = torch.zeros([1, self.emulator.nx])
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     def select_step_data(self, data, i):
         """
@@ -107,12 +145,12 @@ class ClosedLoopSimulator(Simulator):
             x = self.x0 if i == 0 else x
             if i > 0:
                 # select current step disturbance, reference and constraints
-                d = step_data['Df'][0].detach().numpy() if step_data['Df'] is not None else None
-                r = step_data['Rf'][0].detach().numpy() if step_data['Rf'] is not None else None
-                ymin = step_data['Y_minf'][0].detach().numpy() if step_data['Y_minf'] is not None else None
-                ymax = step_data['Y_maxf'][0].detach().numpy() if step_data['Y_maxf'] is not None else None
-                umin = step_data['U_minf'][0].detach().numpy() if step_data['U_minf'] is not None else None
-                umax = step_data['U_maxf'][0].detach().numpy() if step_data['U_maxf'] is not None else None
+                d = step_data['Df'][0].cpu().detach().numpy() if step_data['Df'] is not None else None
+                r = step_data['Rf'][0].cpu().detach().numpy() if step_data['Rf'] is not None else None
+                ymin = step_data['Y_minf'][0].cpu().detach().numpy() if step_data['Y_minf'] is not None else None
+                ymax = step_data['Y_maxf'][0].cpu().detach().numpy() if step_data['Y_maxf'] is not None else None
+                umin = step_data['U_minf'][0].cpu().detach().numpy() if step_data['U_minf'] is not None else None
+                umax = step_data['U_maxf'][0].cpu().detach().numpy() if step_data['U_maxf'] is not None else None
                 if 'Y' in self.dataset.norm:
                     r = min_max_denorm(r, self.dataset.min_max_norms['Ymin'],
                                        self.dataset.min_max_norms['Ymax']) if r is not None else None
@@ -133,14 +171,14 @@ class ClosedLoopSimulator(Simulator):
                     x, y, _, _ = self.emulator.simulate(ninit=0, nsim=1, U=u, D=d, x0=x.flatten())
                 elif isinstance(self.emulator, nn.Module):
                     step_data_0 = dict()
-                    step_data_0['U_pred_policy'] = uopt.reshape(uopt.shape[0], uopt.shape[1], 1).float()
-                    step_data_0['x0_estim'] = x.float()
+                    step_data_0['U_pred_policy'] = uopt.reshape(uopt.shape[0], uopt.shape[1], 1).float().to(self.device)
+                    step_data_0['x0_estim'] = x.float().to(self.device)
                     for k, v in step_data.items():
-                        dat = v[0]
-                        step_data_0[k] = dat.reshape(dat.shape[0], dat.shape[1], 1).float()
+                        dat = v[0].to(self.device)
+                        step_data_0[k] = dat.reshape(dat.shape[0], dat.shape[1], 1).float().to(self.device)
                     emulator_output = self.emulator(step_data_0)
                     x = emulator_output['X_pred_dynamics'][0]
-                    y = emulator_output['Y_pred_dynamics'][0].detach().numpy()
+                    y = emulator_output['Y_pred_dynamics'][0].cpu().detach().numpy()
                     if 'Y' in self.dataset.norm:
                         y = min_max_denorm(y, self.dataset.min_max_norms['Ymin'],
                                            self.dataset.min_max_norms['Ymax']) if y is not None else None
@@ -172,14 +210,14 @@ class ClosedLoopSimulator(Simulator):
 
             # emulator trajectories
             if 'U' in self.dataset.norm:
-                u = min_max_denorm(uopt.numpy(), self.dataset.min_max_norms['Umin'],
+                u = min_max_denorm(uopt.cpu().numpy(), self.dataset.min_max_norms['Umin'],
                                    self.dataset.min_max_norms['Umax'])
             else:
-                u = uopt.numpy()
+                u = uopt.cpu().numpy()
             if i > 0:
                 U.append(u)
                 Y.append(y)
-                X.append(x) if isinstance(self.emulator, EmulatorBase) else X.append(x.detach().numpy())
+                X.append(x) if isinstance(self.emulator, EmulatorBase) else X.append(x.detach().cpu().numpy())
                 D.append(d) if d is not None else None
                 R.append(r) if r is not None else None
                 Ymin.append(ymin) if ymin is not None else None

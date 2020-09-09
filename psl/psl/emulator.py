@@ -118,13 +118,13 @@ class ODE_Autonomous(EmulatorBase):
         # time interval
         t = np.arange(0, nsim+1) * ts + ninit
         X = []
-        for N in range(nsim-1):
+        for N in range(nsim):
             dT = [t[N], t[N + 1]]
             xdot = odeint(self.equations, x, dT)
             x = xdot[-1]
             X.append(x)  # updated states trajectories
         Yout = np.asarray(X)
-        return {'Y': Yout}
+        return {'Y': Yout, 'X': np.asarray(X)}
 
 
 class ODE_NonAutonomous(EmulatorBase, ABC):
@@ -175,5 +175,5 @@ class ODE_NonAutonomous(EmulatorBase, ABC):
                 break
         Yout = np.asarray(X)
         Uout = np.asarray(U)
-        return {'Y': Yout, 'U': Uout}
+        return {'Y': Yout, 'U': Uout, 'X': np.asarray(X)}
 
