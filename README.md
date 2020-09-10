@@ -73,3 +73,9 @@ python control_flexy -system flexy_air -epochs 1000 -nx_hidden 20 -ssm_type blac
 stored trained pytorch models for system ID and control: [Flexy_air](https://github.com/pnnl/FlexyAirDeepMPC/tree/master/neuromancer/neuromancer/datasets/Flexy_air)
 
 test policy in an exposed closed loop for HW implementation [test_policy_flexy.py](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/test_policy_flexy.py)
+
+##### Flexy trained policies
+[trained models](https://github.com/pnnl/FlexyAirDeepMPC/tree/master/neuromancer/neuromancer/datasets/Flexy_air/device_test_models)
+[test trained models](https://github.com/pnnl/FlexyAirDeepMPC/blob/master/neuromancer/neuromancer/train_scripts/test_policy_flexy.py) - beaware there is offset due to poor initialization of trained model, shall work ok though
+
+ 
