@@ -30,7 +30,6 @@ import argparse
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-import dill
 
 # code ecosystem imports
 import slim
@@ -60,14 +59,14 @@ def parse():
                         help="Gpu to use")
     # OPTIMIZATION PARAMETERS
     opt_group = parser.add_argument_group('OPTIMIZATION PARAMETERS')
-    opt_group.add_argument('-epochs', type=int, default=1000)
+    opt_group.add_argument('-epochs', type=int, default=100)
     opt_group.add_argument('-lr', type=float, default=0.001,
                            help='Step size for gradient descent.')
     opt_group.add_argument('-eval_metric', type=str, default='loop_dev_loss',
                            help='Metric for model selection and early stopping.')
-    opt_group.add_argument('-patience', type=int, default=30,
+    opt_group.add_argument('-patience', type=int, default=5,
                            help='How many epochs to allow for no improvement in eval metric before early stopping.')
-    opt_group.add_argument('-warmup', type=int, default=100,
+    opt_group.add_argument('-warmup', type=int, default=0,
                            help='Number of epochs to wait before enacting early stopping policy.')
     opt_group.add_argument('-skip_eval_sim', action='store_true',
                            help='Whether to run simulator during evaluation phase of training.')
@@ -77,9 +76,9 @@ def parse():
     data_group = parser.add_argument_group('DATA PARAMETERS')
     data_group.add_argument('-nsteps', type=int, default=32,
                             help='Number of steps for open loop during training.')
-    data_group.add_argument('-system', type=str, default='flexy_air', choices=list(systems.keys()),
+    data_group.add_argument('-system', type=str, default='Reno_ROM40', choices=list(systems.keys()),
                             help='select particular dataset with keyword')
-    data_group.add_argument('-nsim', type=int, default=8640,
+    data_group.add_argument('-nsim', type=int, default=10000,
                             help='Number of time steps for full dataset. (ntrain + ndev + ntest)'
                                  'train, dev, and test will be split evenly from contiguous, sequential, '
                                  'non-overlapping chunks of nsim datapoints, e.g. first nsim/3 art train,'
@@ -93,15 +92,15 @@ def parse():
     model_group = parser.add_argument_group('MODEL PARAMETERS')
     model_group.add_argument('-ssm_type', type=str, choices=['blackbox', 'hw', 'hammerstein', 'blocknlin', 'linear'],
                              default='blocknlin')
-    model_group.add_argument('-nx_hidden', type=int, default=30, help='Number of hidden states per output')
-    model_group.add_argument('-n_layers', type=int, default=3, help='Number of hidden layers of single time-step state transition')
+    model_group.add_argument('-nx_hidden', type=int, default=20, help='Number of hidden states per output')
+    model_group.add_argument('-n_layers', type=int, default=2, help='Number of hidden layers of single time-step state transition')
     model_group.add_argument('-state_estimator', type=str,
                              choices=['rnn', 'mlp', 'linear', 'residual_mlp'], default='mlp')
-    model_group.add_argument('-estimator_input_window', type=int, default=10,
+    model_group.add_argument('-estimator_input_window', type=int, default=1,
                              help="Number of previous time steps measurements to include in state estimator input")
     model_group.add_argument('-linear_map', type=str, choices=list(slim.maps.keys()),
                              default='linear')
-    model_group.add_argument('-nonlinear_map', type=str, default='mlp',
+    model_group.add_argument('-nonlinear_map', type=str, default='residual_mlp',
                              choices=['mlp', 'rnn', 'pytorch_rnn', 'linear', 'residual_mlp'])
     model_group.add_argument('-bias', action='store_true', help='Whether to use bias in the neural network models.')
     model_group.add_argument('-activation', choices=['relu', 'gelu', 'blu', 'softexp'], default='gelu',
@@ -116,7 +115,7 @@ def parse():
     weight_group.add_argument('-Q_sub', type=float,  default=0.2, help='Linear maps regularization weight.')
     weight_group.add_argument('-Q_y', type=float,  default=1.0, help='Output tracking penalty weight')
     weight_group.add_argument('-Q_e', type=float,  default=1.0, help='State estimator hidden prediction penalty weight')
-    weight_group.add_argument('-Q_con_fdu', type=float,  default=1.0, help='Penalty weight on control actions and disturbances.')
+    weight_group.add_argument('-Q_con_fdu', type=float,  default=0.0, help='Penalty weight on control actions and disturbances.')
 
     ####################
     # LOGGING PARAMETERS
@@ -161,10 +160,6 @@ def dataset_load(args, device):
     else:
         dataset = FileDataset(system=args.system, nsim=args.nsim,
                               norm=args.norm, nsteps=args.nsteps, device=device, savedir=args.savedir)
-        new_sequences = {'Y': dataset.data['Y'][:, :1]}
-        dataset.min_max_norms['Ymin'] = dataset.min_max_norms['Ymin'][0]
-        dataset.min_max_norms['Ymax'] = dataset.min_max_norms['Ymax'][0]
-        dataset.add_data(new_sequences, overwrite=True)
     return dataset
 
 
@@ -180,7 +175,6 @@ if __name__ == '__main__':
     ########## DATA ###############
     ###############################
     dataset = dataset_load(args, device)
-
     ##########################################
     ########## PROBLEM COMPONENTS ############
     ##########################################
@@ -231,8 +225,8 @@ if __name__ == '__main__':
     ##########################################
     xmin = -0.2
     xmax = 1.2
-    dxudmin = -0.5
-    dxudmax = 0.5
+    dxudmin = -0.05
+    dxudmax = 0.05
     estimator_loss = Objective(['X_pred', 'x0'],
                                 lambda X_pred, x0: F.mse_loss(X_pred[-1, :-1, :], x0[1:]),
                                 weight=args.Q_e, name='arrival_cost')
@@ -281,7 +275,3 @@ if __name__ == '__main__':
     best_model = trainer.train()
     trainer.evaluate(best_model)
     logger.clean_up()
-
-    if False:
-        model.load_state_dict(best_model)
-        torch.save(model, '../datasets/Flexy_air/best_model_flexy.pth', pickle_module=dill)

@@ -28,12 +28,12 @@ models = ['/people/drgo694/neuromancer/neuromancer/neuromancer/datasets/Flexy_ai
 def process_res(res, key, system_metrics={}):
     # system_metrics[key] = {}
     if not res.empty:
-        if res['metrics.best_nstep_test_loss'].idxmin() is not np.nan:
-            best = res.loc[res['metrics.best_nstep_test_loss'].idxmin()]
+        if res['metrics.best_nstep_test_ref_loss'].idxmin() is not np.nan:
+            best = res.loc[res['metrics.best_nstep_test_ref_loss'].idxmin()]
         else:
             best = None
         system_metrics[key]['best'] = best
-        res = res.loc[res['metrics.best_nstep_dev_loss'].notnull()]
+        res = res.loc[res['metrics.best_nstep_dev_ref_loss'].notnull()]
         # extract metrics
         nstep_dev = res['metrics.best_nstep_dev_loss']
         nstep_test = res['metrics.best_nstep_test_loss']
@@ -72,8 +72,8 @@ if __name__ == '__main__':
 
     system_metrics = {}
     if not res.empty:
-        if res['metrics.best_nstep_dev_loss'].idxmin() is not np.nan:
-            best = res.loc[res['metrics.best_nstep_dev_loss'].idxmin()]
+        if res['metrics.best_nstep_dev_ref_loss'].idxmin() is not np.nan:
+            best = res.loc[res['metrics.best_nstep_dev_ref_loss'].idxmin()]
         else:
             best = None
         system_metrics['best'] = best
@@ -112,17 +112,17 @@ if __name__ == '__main__':
             # if not not metrics_df[i]:
             #     if not not metrics_df[i][model][linear][nonlinear]:
             stdopen.loc[model,i] = \
-                metrics_df[i][model]['std_nstep_dev']
+                metrics_df[i][model]['std_nstep_dev_ref']
             stdnstep.loc[model,i] = \
-                metrics_df[i][model]['std_nstep_test']
+                metrics_df[i][model]['std_nstep_test_ref']
             meanopen.loc[model, i] = \
-                metrics_df[i][model]['mean_nstep_dev']
+                metrics_df[i][model]['mean_nstep_dev_ref']
             meannstep.loc[model, i] = \
-                metrics_df[i][model]['mean_nstep_test']
+                metrics_df[i][model]['mean_nstep_test_ref']
             min_nstep_dev.loc[model, i] = \
-                metrics_df[i][model]['min_nstep_dev']
+                metrics_df[i][model]['min_nstep_dev_ref']
             min_nstep_test.loc[model, i] = \
-                metrics_df[i][model]['min_nstep_test']
+                metrics_df[i][model]['min_nstep_test_ref']
 
     # # # # # # # # # #
     # PLOTS and Tables
