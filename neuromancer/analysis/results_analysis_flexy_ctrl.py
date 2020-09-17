@@ -16,14 +16,14 @@ import os
 systems = ['flexy air ctrl']
 
 
-linear_map = ['linear', 'pf', 'softSVD']
-N = [4, 8, 16]
-policy = ['mlp', 'rnn']
-activations = ['gelu', 'softexp']
-models = ['/people/drgo694/neuromancer/neuromancer/neuromancer/datasets/Flexy_air/best_model_flexy1.pth',
-          '/qfs/projects/deepmpc/best_flexy_models/best_blocknlin_nlinsearch/best_model.pth',
-          '/people/drgo694/neuromancer/neuromancer/neuromancer/datasets/Flexy_air/best_model_flexy2.pth']
-
+linear_map = ['linear', 'softSVD']
+N = ['8', '16', '32']
+# policy = ['mlp', 'rnn']
+# activations = ['gelu', 'softexp']
+# models = ['/people/drgo694/neuromancer/neuromancer/neuromancer/datasets/Flexy_air/best_model_flexy1.pth',
+#           '/qfs/projects/deepmpc/best_flexy_models/best_blocknlin_nlinsearch/best_model.pth',
+#           '/people/drgo694/neuromancer/neuromancer/neuromancer/datasets/Flexy_air/best_model_flexy2.pth']
+models = ['/people/drgo694/neuromancer/neuromancer/neuromancer/datasets/Flexy_air/best_model_flexy1.pth']
 
 def process_res(res, key, system_metrics={}):
     # system_metrics[key] = {}
@@ -59,15 +59,17 @@ def process_res(res, key, system_metrics={}):
 
 if __name__ == '__main__':
 
-    # res = pandas.read_pickle("../results/flexy_deepmpc_2020_9_8.pkl")
-    res = pandas.read_csv("../results/flexy_deepmpc_2020_9_8.csv")
+    # res = pandas.read_pickle("../results/control/flexy_deepmpc_2020_9_8.pkl")
+    # res = pandas.read_csv("../results/control/flexy_deepmpc_2020_9_8.csv")
+    res = pandas.read_csv("../results/control/flexy_deepmpc_2020_9_13.csv")
 
     res.rename(columns={'params.model_file': 'models',  'params.linear_map': 'linear_map',
                         'params.activation': 'activation', 'params.policy': 'policy',
                         'params.nsteps': 'nsteps'}, inplace=True)
     # hierarchical index
     res.reset_index(inplace=True)
-    res.set_index(['index', 'models', 'linear_map', 'activation', 'policy', 'nsteps'], drop=False, inplace=True)
+    # res.set_index(['index', 'models', 'linear_map', 'activation', 'policy', 'nsteps'], drop=False, inplace=True)
+    res.set_index(['index', 'linear_map', 'nsteps'], drop=False, inplace=True)
     res.index
 
     system_metrics = {}
@@ -79,21 +81,38 @@ if __name__ == '__main__':
         system_metrics['best'] = best
     for nstep in N:
         system_metrics[nstep] = {}
-        res_system_N = res.loc[res.nsteps == nstep]
+        res_system_N = res.loc[res.nsteps == int(nstep)]
         system_metrics = process_res(res=res_system_N, key=nstep, system_metrics=system_metrics)
-        for type in models:
-            system_metrics[nstep][type] = {}
-            res_system_N_type = res_system_N.loc[res_system_N.models == type]
-            system_metrics[nstep] = process_res(res=res_system_N_type, key=type, system_metrics=system_metrics[nstep])
-            for linear in linear_map:
-                system_metrics[nstep][type][linear] = {}
-                res_system_N_type_lin = res_system_N_type.loc[res_system_N_type.linear_map == linear]
-                system_metrics[nstep][type] = process_res(res=res_system_N_type_lin, key=linear, system_metrics=system_metrics[nstep][type])
-                for nonlinear in policy:
-                    system_metrics[nstep][type][linear][nonlinear] = {}
-                    res_system_N_type_nonlin = res_system_N_type_lin.loc[res_system_N_type_lin.policy == nonlinear]
-                    system_metrics[nstep][type][linear] = process_res(res=res_system_N_type_nonlin, key=nonlinear,
-                                                 system_metrics=system_metrics[nstep][type][linear])
+        # if not res_system_N.empty:
+        #     if res_system_N['metrics.best_nstep_dev_ref_loss'].idxmin() is not np.nan:
+        #         best = res_system_N.loc[res_system_N['metrics.best_nstep_dev_ref_loss'].idxmin()]
+        #     else:
+        #         best = None
+        #     system_metrics[nstep+'best'] = best
+        for linear in linear_map:
+            system_metrics[nstep][linear] = {}
+            res_system_N_lin = res_system_N.loc[res_system_N.linear_map == linear]
+            system_metrics[nstep] = process_res(res=res_system_N_lin, key=linear, system_metrics=system_metrics[nstep])
+            # if not res_system_N_lin.empty:
+            #     if res_system_N_lin['metrics.best_nstep_dev_ref_loss'].idxmin() is not np.nan:
+            #         best = res_system_N_lin.loc[res_system_N_lin['metrics.best_nstep_dev_ref_loss'].idxmin()]
+            #     else:
+            #         best = None
+            #     system_metrics[linear + nstep + 'best'] = best
+
+        # for type in models:
+        #     system_metrics[nstep][type] = {}
+        #     res_system_N_type = res_system_N.loc[res_system_N.models == type]
+        #     system_metrics[nstep] = process_res(res=res_system_N_type, key=type, system_metrics=system_metrics[nstep])
+        #     for linear in linear_map:
+        #         system_metrics[nstep][type][linear] = {}
+        #         res_system_N_type_lin = res_system_N_type.loc[res_system_N_type.linear_map == linear]
+        #         system_metrics[nstep][type] = process_res(res=res_system_N_type_lin, key=linear, system_metrics=system_metrics[nstep][type])
+        #         for nonlinear in policy:
+        #             system_metrics[nstep][type][linear][nonlinear] = {}
+        #             res_system_N_type_nonlin = res_system_N_type_lin.loc[res_system_N_type_lin.policy == nonlinear]
+        #             system_metrics[nstep][type][linear] = process_res(res=res_system_N_type_nonlin, key=nonlinear,
+        #                                          system_metrics=system_metrics[nstep][type][linear])
 
     metrics_df = pandas.DataFrame.from_dict(system_metrics)
 
@@ -102,27 +121,48 @@ if __name__ == '__main__':
     # # # # # # # # # #
     idx = []
     for model in models:
-        idx.append(model)
+        idx.append(model.split('/')[-1])
     stdopen, stdnstep, meanopen, meannstep, min_nstep_dev, min_nstep_test = \
         [pandas.DataFrame(index=idx,
           columns=N) for i in range(6)]
 
     for i in N:
-        for model in models:
-            # if not not metrics_df[i]:
-            #     if not not metrics_df[i][model][linear][nonlinear]:
-            stdopen.loc[model,i] = \
-                metrics_df[i][model]['std_nstep_dev_ref']
-            stdnstep.loc[model,i] = \
-                metrics_df[i][model]['std_nstep_test_ref']
-            meanopen.loc[model, i] = \
-                metrics_df[i][model]['mean_nstep_dev_ref']
-            meannstep.loc[model, i] = \
-                metrics_df[i][model]['mean_nstep_test_ref']
-            min_nstep_dev.loc[model, i] = \
-                metrics_df[i][model]['min_nstep_dev_ref']
-            min_nstep_test.loc[model, i] = \
-                metrics_df[i][model]['min_nstep_test_ref']
+        stdopen[i] = \
+            metrics_df[i]['std_nstep_dev_ref']
+        stdnstep[i] = \
+            metrics_df[i]['std_nstep_test_ref']
+        meanopen[i] = \
+            metrics_df[i]['mean_nstep_dev_ref']
+        meannstep[i] = \
+            metrics_df[i]['mean_nstep_test_ref']
+        min_nstep_dev[i] = \
+            metrics_df[i]['min_nstep_dev_ref']
+        min_nstep_test[i] = \
+            metrics_df[i]['min_nstep_test_ref']
+
+    # idx = []
+    # for model in models:
+    #     idx.append(model)
+    # stdopen, stdnstep, meanopen, meannstep, min_nstep_dev, min_nstep_test = \
+    #     [pandas.DataFrame(index=idx,
+    #       columns=N) for i in range(6)]
+    #
+    # for i in N:
+    #     for model in models:
+    #         # if not not metrics_df[i]:
+    #         #     if not not metrics_df[i][model][linear][nonlinear]:
+    #         stdopen.loc[model,i] = \
+    #             metrics_df[i][model]['std_nstep_dev_ref']
+    #         stdnstep.loc[model,i] = \
+    #             metrics_df[i][model]['std_nstep_test_ref']
+    #         meanopen.loc[model, i] = \
+    #             metrics_df[i][model]['mean_nstep_dev_ref']
+    #         meannstep.loc[model, i] = \
+    #             metrics_df[i][model]['mean_nstep_test_ref']
+    #         min_nstep_dev.loc[model, i] = \
+    #             metrics_df[i][model]['min_nstep_dev_ref']
+    #         min_nstep_test.loc[model, i] = \
+    #             metrics_df[i][model]['min_nstep_test_ref']
 
     # # # # # # # # # #
     # PLOTS and Tables
